@@ -12,6 +12,7 @@
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0-master-SNAPSHOT"]]}
              :dev {:dependencies [[ring/ring-mock "0.2.0"]
+                                  [ring/ring-core "1.6.3"]
                                   [ring/ring-codec "1.0.0"]]}}
 
   :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}

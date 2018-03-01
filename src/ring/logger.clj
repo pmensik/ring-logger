@@ -72,7 +72,7 @@
 (defn make-options [options]
   {:pre [(every? keyword? (:redact-keys options))]}
   (let [logger (or (:logger options) (make-tools-logging-logger))
-        redact-keys (or (:redact-keys options) #{:authorization :password :cookie :Set-Cookie})
+        redact-keys (or (:redact-keys options) #{:authorization :password :cookie :token :Set-Cookie})
         redact-value (or (:redact-value options) "[REDACTED]")
         redact-fn (or (:redact-fn options) (messages/redact-some redact-keys (constantly redact-value)))]
     (merge {:logger logger
@@ -82,8 +82,7 @@
            options)))
 
 (defn wrap-with-logger
-  "
-  Returns a Ring middleware handler that logs request and response details.
+  "Returns a Ring middleware handler that logs request and response details.
 
   Options may include:
     * logger: Reifies ring.logger.protocoles/Logger. If not provided will use
@@ -113,8 +112,7 @@
     * messages/finished
 
   When an exception occurs (and :exceptions option is not false):
-    * messages/exception
-  "
+    * messages/exception"
   ([handler options]
    (let [{:keys [logger timing] :as options} (make-options options)]
      (cond-> handler

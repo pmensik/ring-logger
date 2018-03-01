@@ -1,17 +1,22 @@
 (ns ring.logger-test
   (:require [clojure.test :refer [deftest is use-fixtures]]
-            [ring.logger :refer [wrap-with-logger wrap-with-body-logger]]
+            [ring.logger :as logger :refer [wrap-with-logger wrap-with-body-logger]]
+            [ring.logger.messages :as messages]
             [ring.logger.protocols :as protocols]
+            [ring.middleware.params :refer [wrap-params]]
             [ring.util.codec :as codec]
             [ring.mock.request :as mock]))
 
 (def ^{:dynamic true} *entries* (atom []))
 
-(defn make-test-logger []
-  (reify protocols/Logger
+(defn make-test-logger
+  ([]
+   (make-test-logger *entries*))
+  ([messages]
+   (reify protocols/Logger
     (add-extra-middleware [_ handler] handler)
     (log [_ level throwable message]
-      (swap! *entries* conj [nil level nil message]))))
+      (swap! messages conj [nil level nil message])))))
 
 (use-fixtures :each
   (fn [f]
@@ -118,10 +123,25 @@
                     (wrap-with-logger {:logger (make-test-logger)}))]
     (handler (-> (mock/request :get "/")
                  (mock/header "AuthoRizaTion" "Basic secret")))
-    (println @*entries*)
     (is (= []
            (->> (map #(nth % 3) @*entries*)
                 (filter #(re-find #"secret" %)))))))
+
+(deftest query-is-logged-just-once-and-redacted
+  (let [messages (atom [])
+        handler (-> (fn [req] {:status 200 :body "Hello!"})
+                    (wrap-with-logger (logger/make-options
+                                        {:logger (make-test-logger messages)}))
+                    (wrap-params))]
+
+    (-> (mock/request :get "/?token=secret")
+        handler)
+
+    (is (= 5 (count @messages)))
+    (is (= [(str messages/request-params-default-prefix "{\"token\" \"[REDACTED]\"}")]
+           (->> @messages
+                (map (fn [[_ _ _ message]] message))
+                (filter #(re-find #"token" %)))))))
 
 ;; async
 (deftest async-basic-ok-request-logging

@@ -24,9 +24,9 @@
   (if redact-fn (redact-fn m) m))
 
 (defn- make-default-starting-message
-  [options {:keys [request-method uri remote-addr query-string headers] :as req}]
+  [options {:keys [request-method uri remote-addr headers] :as req}]
   (str request-method " "
-       uri (if query-string (str "?" query-string))
+       uri
        " for " remote-addr
        " " (pr-str (redact-map headers options))))
 
@@ -47,7 +47,6 @@
   (debug logger (str "Request details: " (select-keys req [:character-encoding
                                                     :content-length
                                                     :content-type
-                                                    :query-string
                                                     :remote-addr
                                                     :request-method
                                                     :scheme
@@ -61,9 +60,9 @@
 
 (defmethod request-params :default
   [{:keys [logger] :as options} {:keys [params]}]
-  (when params
-    (let [redacted-params (redact-map params options)]
-      (info logger (str request-params-default-prefix redacted-params)))))
+  (when-let [redacted-params (and params
+                                  (redact-map params options))]
+    (info logger (str request-params-default-prefix redacted-params))))
 
 (defmulti sending-response get-printer)
 
@@ -78,13 +77,13 @@
 
 (defn- make-and-log-finished-message
   [{:keys [logger timing] :as options}
-   {:keys [request-method uri remote-addr query-string
+   {:keys [request-method uri remote-addr
            logger-start-time logger-end-time] :as req}
    {:keys [status] :as resp}
    title time-str status-str]
   (let [log-message (str title
                          request-method " "
-                         uri  (if query-string (str "?" query-string))
+                         uri
                          " for " remote-addr
                          (when timing (str " in (" time-str " ms)"))
                          " Status: " status-str
